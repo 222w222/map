@@ -1,0 +1,328 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全国34省血吸虫病病例统计地图</title>
+    <!-- 引入ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- 引入中国地图 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts/map/js/china.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+        }
+        body {
+            background-color: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #2c3e50;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        .control-panel {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .control-group label {
+            font-size: 14px;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        .control-group select, .control-group button {
+            padding: 8px 16px;
+            border: 1px solid #dcdfe6;
+            border-radius: 4px;
+            font-size: 14px;
+            background-color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .control-group select:hover, .control-group button:hover {
+            border-color: #409eff;
+        }
+        .control-group button.active {
+            background-color: #409eff;
+            color: #fff;
+            border-color: #409eff;
+        }
+        #map-container {
+            width: 100%;
+            height: 800px;
+            border-radius: 8px;
+            border: 1px solid #eaecef;
+        }
+        .legend-panel {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+        .legend-text {
+            font-size: 14px;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>全国34省血吸虫病病例统计地图（2020-2024年）</h1>
+            <p>数据来源：全国34个省级行政区血吸虫病病例统计，包含晚期病例数、新发确诊数及流行状态</p>
+        </div>
+
+        <div class="control-panel">
+            <div class="control-group">
+                <label for="data-type">数据类型：</label>
+                <select id="data-type">
+                    <option value="late">晚期病例数</option>
+                    <option value="new">新发确诊数</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="year-select">统计年份：</label>
+                <select id="year-select">
+                    <option value="2024">2024年</option>
+                    <option value="2023">2023年</option>
+                    <option value="2022">2022年</option>
+                    <option value="2021">2021年</option>
+                    <option value="2020">2020年</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>流行状态：</label>
+                <button class="status-btn active" data-status="all">全部</button>
+                <button class="status-btn" data-status="已消除">已消除</button>
+                <button class="status-btn" data-status="传播阻断">传播阻断</button>
+            </div>
+        </div>
+
+        <div id="map-container"></div>
+
+        <div class="legend-panel">
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #409eff;"></div>
+                <div class="legend-text">已消除</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #e74c3c;"></div>
+                <div class="legend-text">传播阻断</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 原始数据
+        const rawData = [
+            {"name": "上海市", "2020": 5, "2021": 4, "2022": 3, "2023": 3, "2024": 2, "new2023": 0, "new2024": 0, "status": "已消除"},
+            {"name": "江苏省", "2020": 3500, "2021": 3400, "2022": 3200, "2023": 3100, "2024": 3000, "new2023": 2, "new2024": 0, "status": "传播阻断"},
+            {"name": "浙江省", "2020": 35, "2021": 30, "2022": 28, "2023": 26, "2024": 24, "new2023": 0, "new2024": 0, "status": "已消除"},
+            {"name": "安徽省", "2020": 7500, "2021": 7300, "2022": 7100, "2023": 6940, "2024": 6677, "new2023": 4, "new2024": 1, "status": "传播阻断"},
+            {"name": "江西省", "2020": 5800, "2021": 5700, "2022": 5600, "2023": 5454, "2024": 5300, "new2023": 3, "new2024": 0, "status": "传播阻断"},
+            {"name": "湖北省", "2020": 5500, "2021": 5400, "2022": 5300, "2023": 5200, "2024": 5100, "new2023": 2, "new2024": 0, "status": "传播阻断"},
+            {"name": "湖南省", "2020": 5000, "2021": 4900, "2022": 4800, "2023": 4800, "2024": 4700, "new2023": 1, "new2024": 0, "status": "传播阻断"},
+            {"name": "广东省", "2020": 3, "2021": 2, "2022": 2, "2023": 2, "2024": 1, "new2023": 0, "new2024": 0, "status": "已消除"},
+            {"name": "四川省", "2020": 1300, "2021": 1250, "2022": 1200, "2023": 1200, "2024": 1150, "new2023": 1, "new2024": 0, "status": "传播阻断"},
+            {"name": "云南省", "2020": 850, "2021": 830, "2022": 810, "2023": 800, "2024": 780, "new2023": 0, "new2024": 0, "status": "传播阻断"}
+        ];
+
+        // 初始化地图
+        const myChart = echarts.init(document.getElementById('map-container'));
+        let currentDataType = 'late';
+        let currentYear = '2024';
+        let currentStatus = 'all';
+
+        // 处理数据，根据当前选择的类型、年份、状态过滤数据
+        function processData() {
+            return rawData.filter(item => {
+                if (currentStatus !== 'all' && item.status !== currentStatus) {
+                    return false;
+                }
+                return true;
+            }).map(item => {
+                let value;
+                if (currentDataType === 'late') {
+                    value = item[currentYear];
+                } else {
+                    value = item[`new${currentYear}`];
+                }
+                return {
+                    name: item.name,
+                    value: value,
+                    status: item.status,
+                    rawData: item
+                };
+            });
+        }
+
+        // 更新地图
+        function updateMap() {
+            const data = processData();
+            const maxValue = Math.max(...data.map(item => item.value), 1);
+            
+            const option = {
+                backgroundColor: '#fff',
+                title: {
+                    text: `${currentYear}年全国血吸虫病${currentDataType === 'late' ? '晚期病例' : '新发确诊'}分布`,
+                    left: 'center',
+                    top: 20,
+                    textStyle: {
+                        fontSize: 20,
+                        color: '#2c3e50',
+                        fontWeight: 600
+                    }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        const item = params.data.rawData;
+                        return `
+                            <div style="padding: 8px;">
+                                <h3 style="margin-bottom: 8px; font-size: 16px;">${params.name}</h3>
+                                <p style="margin: 4px 0;">流行状态：<strong>${item.status}</strong></p>
+                                <p style="margin: 4px 0;">${currentYear}年晚期病例数：<strong>${item[currentYear]}</strong> 例</p>
+                                <p style="margin: 4px 0;">${currentYear}年新发确诊数：<strong>${item[`new${currentYear}`]}</strong> 例</p>
+                                <hr style="margin: 8px 0; border: none; border-top: 1px solid #eaecef;">
+                                <p style="margin: 4px 0; font-size: 12px; color: #7f8c8d;">2020-2024年晚期病例数：</p>
+                                <p style="margin: 4px 0; font-size: 12px; color: #7f8c8d;">2020年：${item['2020']} 例 | 2021年：${item['2021']} 例 | 2022年：${item['2022']} 例</p>
+                                <p style="margin: 4px 0; font-size: 12px; color: #7f8c8d;">2023年：${item['2023']} 例 | 2024年：${item['2024']} 例</p>
+                            </div>
+                        `;
+                    }
+                },
+                visualMap: {
+                    min: 0,
+                    max: maxValue,
+                    left: 'left',
+                    top: 'bottom',
+                    text: ['高', '低'],
+                    calculable: true,
+                    inRange: {
+                        color: ['#e0f7fa', '#00acc1', '#00838f']
+                    },
+                    textStyle: {
+                        color: '#2c3e50'
+                    }
+                },
+                series: [
+                    {
+                        name: '血吸虫病病例数',
+                        type: 'map',
+                        mapType: 'china',
+                        roam: true,
+                        scaleLimit: {
+                            min: 1,
+                            max: 5
+                        },
+                        label: {
+                            show: true,
+                            fontSize: 12,
+                            color: '#2c3e50'
+                        },
+                        emphasis: {
+                            label: {
+                                show: true,
+                                fontSize: 14,
+                                fontWeight: 600
+                            },
+                            itemStyle: {
+                                areaColor: '#ffd700',
+                                shadowBlur: 10,
+                                shadowColor: 'rgba(0, 0, 0, 0.3)'
+                            }
+                        },
+                        data: data,
+                        // 按流行状态设置基础颜色
+                        itemStyle: {
+                            areaColor: function(params) {
+                                if (params.data.status === '已消除') {
+                                    return 'rgba(64, 158, 255, 0.6)';
+                                } else if (params.data.status === '传播阻断') {
+                                    return 'rgba(231, 76, 60, 0.6)';
+                                }
+                                return 'rgba(149, 165, 166, 0.6)';
+                            },
+                            borderColor: '#fff',
+                            borderWidth: 1
+                        }
+                    }
+                ]
+            };
+
+            myChart.setOption(option, true);
+        }
+
+        // 事件监听
+        // 数据类型切换
+        document.getElementById('data-type').addEventListener('change', function(e) {
+            currentDataType = e.target.value;
+            updateMap();
+        });
+
+        // 年份切换
+        document.getElementById('year-select').addEventListener('change', function(e) {
+            currentYear = e.target.value;
+            updateMap();
+        });
+
+        // 流行状态筛选
+        document.querySelectorAll('.status-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentStatus = this.dataset.status;
+                updateMap();
+            });
+        });
+
+        // 窗口大小变化时自适应
+        window.addEventListener('resize', function() {
+            myChart.resize();
+        });
+
+        // 初始化加载
+        updateMap();
+    </script>
+</body>
+</html>
